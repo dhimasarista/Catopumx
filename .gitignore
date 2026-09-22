@@ -1,0 +1,5 @@
+bin/
+obj/
+.env
+catopumx.toml
+*.db
