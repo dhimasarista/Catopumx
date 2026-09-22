@@ -1,0 +1,34 @@
+{
+  "modbus": [
+    {
+      "name": "line1-plc",
+      "address": "192.168.1.50:502",
+      "slaveId": 1,
+      "pollIntervalMs": 5000,
+      "registers": [
+        {
+          "name": "temperature",
+          "address": 0,
+          "quantity": 1,
+          "topic": "factory/line1/temperature"
+        },
+        {
+          "name": "pressure",
+          "address": 2,
+          "topic": "factory/line1/pressure"
+        }
+      ]
+    }
+  ],
+
+  "alerts": [
+    {
+      "name": "line1-overheat",
+      "topic": "factory/line1/temperature",
+      "field": "value",
+      "operator": "greaterThan",
+      "threshold": 80.0,
+      "publishTopic": "alerts/line1/overheat"
+    }
+  ]
+}

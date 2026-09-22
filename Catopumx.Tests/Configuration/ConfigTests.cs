@@ -8,7 +8,7 @@ public class ConfigTests
     [Fact]
     public void MissingFileYieldsDefaultConfig()
     {
-        var config = AppConfig.Load("does-not-exist.toml");
+        var config = AppConfig.Load("does-not-exist.json");
         Assert.Empty(config.Modbus);
         Assert.Empty(config.Alerts);
     }
@@ -33,25 +33,31 @@ public class ConfigTests
     [Fact]
     public void ParsesFullConfigDocument()
     {
-        const string tomlSrc = """
-            [[modbus]]
-            name = "line1"
-            address = "127.0.0.1:502"
-            registers = [
-                { name = "temp", address = 0, topic = "factory/line1/temp" }
-            ]
-
-            [[alerts]]
-            name = "overheat"
-            topic = "factory/line1/temp"
-            field = "value"
-            operator = "greater_than"
-            threshold = 80.0
-            publish_topic = "alerts/line1/overheat"
+        const string json = """
+            {
+              "modbus": [
+                {
+                  "name": "line1",
+                  "address": "127.0.0.1:502",
+                  "registers": [
+                    { "name": "temp", "address": 0, "topic": "factory/line1/temp" }
+                  ]
+                }
+              ],
+              "alerts": [
+                {
+                  "name": "overheat",
+                  "topic": "factory/line1/temp",
+                  "field": "value",
+                  "operator": "greaterThan",
+                  "threshold": 80.0,
+                  "publishTopic": "alerts/line1/overheat"
+                }
+              ]
+            }
             """;
 
-        var model = Tomlyn.Toml.ToModel(tomlSrc);
-        var config = AppConfig.FromModel(model);
+        var config = AppConfig.FromJson(json);
 
         Assert.Single(config.Modbus);
         Assert.Equal(1, config.Modbus[0].SlaveId);
@@ -61,29 +67,24 @@ public class ConfigTests
     }
 
     [Fact]
-    public void ParsesNestedArrayOfTablesRegisterSyntax()
+    public void ParsesMultipleRegistersOnOneDevice()
     {
-        // Matches the syntax actually used in catopumx.toml.example
-        // ([[modbus.registers]]), distinct from the inline-array syntax
-        // covered by ParsesFullConfigDocument above.
-        const string tomlSrc = """
-            [[modbus]]
-            name = "line1-plc"
-            address = "192.168.1.50:502"
-
-            [[modbus.registers]]
-            name = "temperature"
-            address = 0
-            topic = "factory/line1/temperature"
-
-            [[modbus.registers]]
-            name = "pressure"
-            address = 2
-            topic = "factory/line1/pressure"
+        const string json = """
+            {
+              "modbus": [
+                {
+                  "name": "line1-plc",
+                  "address": "192.168.1.50:502",
+                  "registers": [
+                    { "name": "temperature", "address": 0, "topic": "factory/line1/temperature" },
+                    { "name": "pressure", "address": 2, "topic": "factory/line1/pressure" }
+                  ]
+                }
+              ]
+            }
             """;
 
-        var model = Tomlyn.Toml.ToModel(tomlSrc);
-        var config = AppConfig.FromModel(model);
+        var config = AppConfig.FromJson(json);
 
         Assert.Single(config.Modbus);
         Assert.Equal(2, config.Modbus[0].Registers.Count);

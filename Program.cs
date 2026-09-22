@@ -27,7 +27,7 @@ var logger = app.Logger;
 
 logger.LogInformation("Starting Catopumx - All-in-One IIoT Realtime Hub");
 
-var appConfig = LoadAppConfig("catopumx.toml", logger);
+var appConfig = LoadAppConfig("catopumx.json", logger);
 
 var vault = await ConnectVaultAsync(logger);
 var alertEngine = new AlertEngine(appConfig.Alerts);

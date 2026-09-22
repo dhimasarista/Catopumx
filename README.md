@@ -61,7 +61,7 @@ flowchart LR
 ```
 Catopumx/
   Program.cs               Composition root: config load, broker bootstrap, HTTP endpoints
-  Configuration/            catopumx.toml model + parsing (AppConfig, ModbusDevice, AlertRule, Operator)
+  Configuration/            catopumx.json model + parsing (AppConfig, ModbusDevice, AlertRule, Operator)
   Mqtt/                     Embedded broker bootstrap and in-process publish helper
   Modbus/                   Modbus TCP -> MQTT polling bridge
   Storage/                  Vault: per-backend (Postgres/MySQL/SQLite) schema + upsert SQL
@@ -81,7 +81,7 @@ Catopumx/
 | In-memory state cache | `ConcurrentDictionary` (built-in) |
 | Multi-consumer event broadcast | Custom `EventBus` (per-subscriber bounded `Channel<T>`) |
 | Webhook dispatch | `HttpClient` (built-in) |
-| Config | Hand-rolled `.env` loader, [Tomlyn](https://github.com/xoofx/Tomlyn) (`catopumx.toml`) |
+| Config | Hand-rolled `.env` loader, `System.Text.Json` (`catopumx.json`) |
 | Serialization | `System.Text.Json` (built-in) |
 | Logging | `Microsoft.Extensions.Logging` (built-in) |
 
@@ -103,7 +103,7 @@ cd Catopumx
 cp .env.example .env
 
 # Optional: enable Modbus devices and/or alert rules
-cp catopumx.toml.example catopumx.toml
+cp catopumx.json.example catopumx.json
 
 # Run in debug mode
 dotnet run
@@ -113,7 +113,7 @@ dotnet build -c Release
 dotnet bin/Release/net10.0/Catopumx.dll
 ```
 
-On startup, Catopumx logs whether it connected to a database or is running in No-DB mode, how many Modbus devices and alert rules were loaded from `catopumx.toml`, then starts the MQTT broker (`MQTT_LISTEN_ADDR`) and the HTTP broadcaster (`http://0.0.0.0:3000`).
+On startup, Catopumx logs whether it connected to a database or is running in No-DB mode, how many Modbus devices and alert rules were loaded from `catopumx.json`, then starts the MQTT broker (`MQTT_LISTEN_ADDR`) and the HTTP broadcaster (`http://0.0.0.0:3000`).
 
 ### Verify it's running
 
@@ -131,7 +131,7 @@ dotnet test
 
 ## Configuration
 
-Catopumx reads two files: `.env` for runtime/environment settings, and `catopumx.toml` (optional) for Modbus devices and alert rules. See [`.env.example`](.env.example) and [`catopumx.toml.example`](catopumx.toml.example) for the full, commented reference.
+Catopumx reads two files: `.env` for runtime/environment settings, and `catopumx.json` (optional) for Modbus devices and alert rules. See [`.env.example`](.env.example) and [`catopumx.json.example`](catopumx.json.example) for the full reference.
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
@@ -140,7 +140,7 @@ Catopumx reads two files: `.env` for runtime/environment settings, and `catopumx
 | `MQTT_USERNAME` / `MQTT_PASSWORD` | No | *(unset)* | Credentials required from MQTT clients. Unset means unauthenticated. |
 | `HTTP_LISTEN_ADDR` | No | `0.0.0.0:3000` | Address the HTTP broadcaster listens on. |
 
-`catopumx.toml` has two top-level array sections, both optional and independent: `[[modbus]]` (Modbus TCP devices to poll and bridge onto MQTT) and `[[alerts]]` (threshold rules evaluated against ingested JSON payloads). Neither file is required to start Catopumx.
+`catopumx.json` has two top-level array fields, both optional and independent: `modbus` (Modbus TCP devices to poll and bridge onto MQTT) and `alerts` (threshold rules evaluated against ingested JSON payloads). Neither file is required to start Catopumx.
 
 ## API Reference
 
