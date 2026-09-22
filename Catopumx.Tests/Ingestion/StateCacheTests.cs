@@ -1,8 +1,8 @@
 using System.Text.Json;
-using Catopumx;
+using Catopumx.Ingestion;
 using Xunit;
 
-namespace Catopumx.Tests;
+namespace Catopumx.Tests.Ingestion;
 
 public class StateCacheTests
 {

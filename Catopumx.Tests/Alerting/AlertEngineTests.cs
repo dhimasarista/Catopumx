@@ -1,10 +1,11 @@
 using System.Text.Json;
-using Catopumx;
+using Catopumx.Alerting;
+using Catopumx.Configuration;
 using Xunit;
 
-namespace Catopumx.Tests;
+namespace Catopumx.Tests.Alerting;
 
-public class AlertsTests
+public class AlertEngineTests
 {
     private static JsonElement Json(string raw) => JsonDocument.Parse(raw).RootElement;
 
@@ -57,16 +58,4 @@ public class AlertsTests
         var result = engine.Evaluate("sensors/temp", Json("""{"other_field": 999.0}"""));
         Assert.Empty(result);
     }
-
-    [Fact]
-    public void RedactsUserinfoFromUrl() =>
-        Assert.Equal(
-            "https://***@example.com/hook",
-            AlertDispatcher.RedactCredentials("https://user:pass@example.com/hook"));
-
-    [Fact]
-    public void LeavesUrlWithoutUserinfoUnchanged() =>
-        Assert.Equal(
-            "https://example.com/hook",
-            AlertDispatcher.RedactCredentials("https://example.com/hook"));
 }

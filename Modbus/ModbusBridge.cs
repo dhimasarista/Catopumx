@@ -1,10 +1,12 @@
 using System.Net;
 using System.Text.Json;
+using Catopumx.Configuration;
+using Catopumx.Mqtt;
 using FluentModbus;
 using Microsoft.Extensions.Logging;
 using MQTTnet.Server;
 
-namespace Catopumx;
+namespace Catopumx.Modbus;
 
 /// <summary>
 /// Polls one Modbus TCP device on a fixed interval and republishes each

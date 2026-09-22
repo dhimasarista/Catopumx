@@ -1,7 +1,7 @@
 using Tomlyn;
 using Tomlyn.Model;
 
-namespace Catopumx;
+namespace Catopumx.Configuration;
 
 /// <summary>
 /// Root of catopumx.toml. Both sections are optional and independent: a

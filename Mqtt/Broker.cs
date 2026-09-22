@@ -4,7 +4,7 @@ using MQTTnet;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
 
-namespace Catopumx;
+namespace Catopumx.Mqtt;
 
 /// <summary>
 /// Wraps an embedded MQTTnet broker plus the two ways the rest of Catopumx
@@ -12,13 +12,12 @@ namespace Catopumx;
 /// itself:
 ///
 /// - Inbound: <see cref="MqttServer.InterceptingPublishAsync"/> fires for
-///   every message any client (or the bridge/alerts below) publishes — this
-///   is the ingestion tap, equivalent to rumqttd's "ingest" link subscribed
-///   to "#".
+///   every message any client (or the bridge/alerts) publishes — this is
+///   the single tap the ingestion pipeline subscribes to.
 /// - Outbound: <see cref="MqttServer.InjectApplicationMessageAsync"/> injects
 ///   a message as if a client published it, so it is delivered to every
 ///   subscriber (including the ingestion tap itself) through the broker's
-///   normal routing — equivalent to rumqttd's "alerts"/"modbus" links.
+///   normal routing.
 /// </summary>
 public static class Broker
 {

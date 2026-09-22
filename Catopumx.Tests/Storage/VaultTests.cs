@@ -1,7 +1,7 @@
-using Catopumx;
+using Catopumx.Storage;
 using Xunit;
 
-namespace Catopumx.Tests;
+namespace Catopumx.Tests.Storage;
 
 public class VaultTests
 {

@@ -1,12 +1,12 @@
 using System.Data.Common;
 using System.Text;
 using System.Text.Json;
+using Catopumx.Alerting;
+using Catopumx.Storage;
 using Microsoft.Extensions.Logging;
 using MQTTnet.Server;
 
-namespace Catopumx;
-
-public sealed record VaultConnection(Backend Backend, string ConnectionString);
+namespace Catopumx.Ingestion;
 
 /// <summary>
 /// The core pipeline: every MQTT message the broker intercepts is passed to

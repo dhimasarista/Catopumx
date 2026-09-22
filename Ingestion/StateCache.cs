@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Catopumx;
+namespace Catopumx.Ingestion;
 
 /// <summary>
 /// The most recently seen value for a topic, kept in memory so dashboards

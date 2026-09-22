@@ -1,5 +1,10 @@
 using System.Net;
-using Catopumx;
+using Catopumx.Alerting;
+using Catopumx.Configuration;
+using Catopumx.Ingestion;
+using Catopumx.Modbus;
+using Catopumx.Mqtt;
+using Catopumx.Storage;
 using Microsoft.Data.Sqlite;
 using MQTTnet.Server;
 
@@ -47,7 +52,7 @@ var ingest = new Ingest(
 var mqttListen = ParseSocketAddress(
     Environment.GetEnvironmentVariable("MQTT_LISTEN_ADDR") ?? "0.0.0.0:1883");
 
-var mqttAuth = BuildMqttAuth(logger);
+var mqttAuth = BuildMqttAuth();
 
 var mqttServer = Broker.Create(mqttListen, mqttAuth, logger);
 
@@ -176,7 +181,7 @@ static IPEndPoint ParseSocketAddress(string raw)
     return new IPEndPoint(address, port);
 }
 
-static (string User, string Password)? BuildMqttAuth(ILogger logger)
+static (string User, string Password)? BuildMqttAuth()
 {
     var user = Environment.GetEnvironmentVariable("MQTT_USERNAME");
     var pass = Environment.GetEnvironmentVariable("MQTT_PASSWORD");
@@ -187,7 +192,7 @@ static (string User, string Password)? BuildMqttAuth(ILogger logger)
 /// Connects to the vault and ensures its schema exists. Any failure along
 /// the way (missing URL, unrecognized scheme, connection error, schema
 /// error) is logged and treated as "run in No-DB mode" rather than a fatal
-/// error, matching the original's broadcast-only fallback behavior.
+/// error.
 /// </summary>
 static async Task<VaultConnection?> ConnectVaultAsync(ILogger logger)
 {
@@ -225,12 +230,11 @@ static async Task<VaultConnection?> ConnectVaultAsync(ILogger logger)
 }
 
 /// <summary>
-/// The provider ADO.NET clients (Npgsql/MySqlConnector/Microsoft.Data.Sqlite)
-/// each expect their own connection-string dialect rather than a single
-/// portable URL, unlike sqlx's DATABASE_URL. Postgres/MySQL URLs pass
-/// straight through to Npgsql/MySqlConnector (both accept a plain
-/// "scheme://user:pass@host/db"-style URL); sqlite: URLs are translated to a
-/// bare file-path connection string.
+/// Each ADO.NET provider (Npgsql/MySqlConnector/Microsoft.Data.Sqlite)
+/// expects its own connection-string dialect rather than one portable URL.
+/// Postgres/MySQL URLs pass straight through to Npgsql/MySqlConnector (both
+/// accept a plain "scheme://user:pass@host/db"-style URL); sqlite: URLs are
+/// translated to a bare file-path connection string.
 /// </summary>
 static string ToProviderConnectionString(Backend backend, string databaseUrl) => backend switch
 {

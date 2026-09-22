@@ -1,17 +1,15 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 
-namespace Catopumx;
+namespace Catopumx.Ingestion;
 
 /// <summary>
 /// Multi-consumer broadcast of ingested events to every connected SSE
-/// client. .NET's <see cref="Channel{T}"/> is single-consumer per item (a
-/// write is delivered to exactly one reader), unlike Rust's
-/// tokio::sync::broadcast, so fan-out is done explicitly here: each
-/// subscriber gets its own bounded channel, and <see cref="Publish"/> writes
-/// to all of them. A subscriber that falls behind has its oldest buffered
-/// event dropped rather than blocking the publisher or killing the
-/// connection, mirroring the original's "lagged" semantics.
+/// client. A plain <see cref="Channel{T}"/> only delivers each write to one
+/// reader, so fan-out is done explicitly here: each subscriber gets its own
+/// bounded channel, and <see cref="Publish"/> writes to all of them. A
+/// subscriber that falls behind has its oldest buffered event dropped
+/// rather than blocking the publisher or killing the connection.
 /// </summary>
 public sealed class EventBus
 {

@@ -3,22 +3,18 @@ using Microsoft.Data.Sqlite;
 using MySqlConnector;
 using Npgsql;
 
-namespace Catopumx;
+namespace Catopumx.Storage;
 
-/// <summary>
-/// The database backend a connection string points at.
-///
-/// Unlike a single ORM abstraction, placeholder syntax ($1 vs ?) and UPSERT
-/// syntax (ON CONFLICT vs ON DUPLICATE KEY UPDATE) differ per backend, so
-/// every statement here is generated per-backend rather than written once
-/// and assumed to be portable — mirroring the original sqlx::Any port.
-/// </summary>
+/// <summary>The database backend a connection string points at.</summary>
 public enum Backend
 {
     Postgres,
     MySql,
     Sqlite,
 }
+
+/// <summary>An open, resolved vault target: which backend, and how to connect to it.</summary>
+public sealed record VaultConnection(Backend Backend, string ConnectionString);
 
 public static class BackendExtensions
 {
@@ -45,6 +41,12 @@ public static class BackendExtensions
         return null;
     }
 
+    /// <summary>
+    /// Placeholder syntax ($1 vs ?) and UPSERT syntax (ON CONFLICT vs ON
+    /// DUPLICATE KEY UPDATE) differ per backend, so every statement here is
+    /// generated per-backend rather than written once and assumed to be
+    /// portable.
+    /// </summary>
     internal static string CreateTableSql(this Backend backend) => backend switch
     {
         Backend.Postgres or Backend.Sqlite =>

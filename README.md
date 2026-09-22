@@ -1,14 +1,20 @@
 # Catopumx
 
-**A single-binary, deterministic realtime hub for Industrial IoT (IIoT) — the C# / .NET port of [CatHub](https://github.com/dhimasarista/cathub).**
+**A single-process, deterministic realtime hub for Industrial IoT (IIoT), built on .NET.**
 
 Catopumx collapses the typical IIoT ingestion stack — MQTT broker, worker, database, web server — into one process, so an edge gateway or small VPS can ingest, deduplicate, persist, and broadcast telemetry without an orchestration layer. It also bridges legacy Modbus TCP devices onto that same pipeline, so PLCs and sensors that don't speak MQTT natively don't need a separate gateway.
 
-> **Project status: early / actively developed, ported from a working Rust reference implementation.** The core pipeline (MQTT ingest → dedup → vault → SSE → alerts) is implemented and covered by unit tests. It has not been run against real factory hardware or under production load.
+> **Project status: early / actively developed.** The core pipeline (MQTT ingest → dedup → vault → SSE → alerts) is implemented and covered by unit tests. It has not been run against real factory hardware or under production load.
 
-## Why a C# port of a Rust project
+## Vision
 
-This exists specifically to see how far C#'s managed-but-controllable runtime (`Span<T>`, `ConcurrentDictionary`, NativeAOT) gets for the same problem the original Rust project solves, without leaving the .NET/CORE ecosystem. See the [Tech Stack](#tech-stack) table for the exact library mapping.
+Industrial environments need strict data determinism, zero duplication, and real-time visualization, without wiring together a broker, a worker process, a database, and a web server by hand. Catopumx's design:
+
+1. **Embedded MQTT Ingestor** — devices connect directly to Catopumx; no external broker to run.
+2. **Modbus TCP → MQTT Bridge** — legacy PLCs and sensors that only speak Modbus are polled and republished as MQTT, so they flow through the same pipeline as native MQTT devices.
+3. **Deterministic Vault** — idempotent writes to Postgres/MySQL/SQLite so duplicate telemetry (from flaky factory networks or repeated Modbus polls) never lands twice.
+4. **Real-time Broadcaster** — built-in Server-Sent Events (SSE) so dashboards can stream live data without hitting the database.
+5. **Threshold Alerting** — simple rules re-publish to MQTT or POST a webhook when a value crosses a configured threshold.
 
 ## Architecture
 
@@ -21,20 +27,20 @@ flowchart LR
 
     subgraph Catopumx ["Catopumx Middleware"]
         Bridge["Modbus -> MQTT Bridge"]
-        Broker["Embedded MQTT Broker (MQTTnet)"]
+        Broker["Embedded MQTT Broker"]
         Engine["Ingestion & Dedup Engine"]
         Alerts["Alert Engine"]
         Cache["In-Memory State Cache"]
         SSE["SSE Broadcaster"]
 
         Plc --> Bridge
-        Bridge -- "inject" --> Broker
+        Bridge -- "publish" --> Broker
         MqttDevice -- "publish" --> Broker
-        Broker -- "InterceptingPublishAsync" --> Engine
+        Broker -- "intercept" --> Engine
         Engine --> Cache
         Engine --> Alerts
         Engine --> SSE
-        Alerts -- "inject" --> Broker
+        Alerts -- "publish" --> Broker
     end
 
     subgraph Storage ["Storage Layer"]
@@ -50,23 +56,34 @@ flowchart LR
     Alerts -- "webhook POST" --> ClientApp
 ```
 
-Unlike the Rust original's in-process rumqttd "links", Catopumx's internal components talk to the embedded MQTT broker via `MqttServer.InterceptingPublishAsync` (inbound tap) and `MqttServer.InjectApplicationMessage` (outbound publish) — no loopback network connection to itself, but no true zero-copy in-process link either, since MQTTnet doesn't expose one. Functionally equivalent; worth knowing if you're comparing the two codebases line-for-line.
+## Project Layout
+
+```
+Catopumx/
+  Program.cs               Composition root: config load, broker bootstrap, HTTP endpoints
+  Configuration/            catopumx.toml model + parsing (AppConfig, ModbusDevice, AlertRule, Operator)
+  Mqtt/                     Embedded broker bootstrap and in-process publish helper
+  Modbus/                   Modbus TCP -> MQTT polling bridge
+  Storage/                  Vault: per-backend (Postgres/MySQL/SQLite) schema + upsert SQL
+  Alerting/                 Threshold evaluation (AlertEngine) and dispatch (AlertDispatcher)
+  Ingestion/                Dedup cache (StateCache), SSE fan-out (EventBus), the core pipeline (Ingest)
+  Catopumx.Tests/           Unit tests, one file per area above
+```
 
 ## Tech Stack
 
-| Concern | Rust (CatHub) | C# (Catopumx) |
-|---|---|---|
-| HTTP server | `actix-web` | ASP.NET Core Minimal API |
-| Async runtime | `tokio` | `Task`-based async/await |
-| Embedded MQTT broker | `rumqttd` | `MQTTnet` |
-| Modbus TCP client | `tokio-modbus` | `FluentModbus` |
-| Database access | `sqlx::Any` (Postgres/MySQL/SQLite) | `Npgsql` / `MySqlConnector` / `Microsoft.Data.Sqlite` behind a small `Backend` abstraction |
-| In-memory state cache | `dashmap` | `ConcurrentDictionary` (built-in) |
-| Multi-consumer event broadcast | `tokio::sync::broadcast` | Custom `EventBus` (per-subscriber bounded `Channel<T>`, since .NET has no built-in broadcast channel) |
-| Webhook dispatch | `ureq` | `HttpClient` (built-in) |
-| Config | `dotenvy` (`.env`), `toml` (`catopumx.toml`) | Hand-rolled `.env` loader, `Tomlyn` (`catopumx.toml`) |
-| Serialization | `serde` / `serde_json` | `System.Text.Json` (built-in) |
-| Logging | `tracing` | `Microsoft.Extensions.Logging` (built-in) |
+| Concern | Library |
+|---|---|
+| HTTP server | ASP.NET Core Minimal API |
+| Embedded MQTT broker | [MQTTnet](https://github.com/dotnet/MQTTnet) |
+| Modbus TCP client | [FluentModbus](https://github.com/Apollo3zehn/FluentModbus) |
+| Database access | [Npgsql](https://www.npgsql.org/) / [MySqlConnector](https://mysqlconnector.net/) / [Microsoft.Data.Sqlite](https://learn.microsoft.com/dotnet/standard/data/sqlite/) behind a small `Backend` abstraction |
+| In-memory state cache | `ConcurrentDictionary` (built-in) |
+| Multi-consumer event broadcast | Custom `EventBus` (per-subscriber bounded `Channel<T>`) |
+| Webhook dispatch | `HttpClient` (built-in) |
+| Config | Hand-rolled `.env` loader, [Tomlyn](https://github.com/xoofx/Tomlyn) (`catopumx.toml`) |
+| Serialization | `System.Text.Json` (built-in) |
+| Logging | `Microsoft.Extensions.Logging` (built-in) |
 
 ## Getting Started
 
@@ -136,7 +153,7 @@ Catopumx reads two files: `.env` for runtime/environment settings, and `catopumx
 
 ## Security posture (read before exposing beyond localhost)
 
-Same known, deliberate gaps as the Rust original:
+This is an early-stage project; the following are known, deliberate gaps rather than oversights:
 
 - **MQTT broker has no authentication unless you set it.** Set both `MQTT_USERNAME` and `MQTT_PASSWORD` before exposing `MQTT_LISTEN_ADDR` beyond localhost or a trusted network segment.
 - **The HTTP API has no authentication at all.** It's read-only, but discloses every ingested topic's current value to anyone who can reach port 3000. Put it behind a reverse proxy with auth, or a network ACL.
@@ -146,13 +163,14 @@ Same known, deliberate gaps as the Rust original:
 
 ## Roadmap
 
-- [ ] Per-topic dynamic schema inference (deliberately not implemented — same reasoning as the Rust original)
+- [ ] Per-topic dynamic schema inference (deliberately not implemented — the vault stores every topic's latest payload as an opaque JSON string in one fixed table rather than generating per-field typed columns from untrusted topic names/JSON keys)
 - [ ] Persistent (rather than reconnect-per-poll) Modbus TCP sessions for high-frequency polling
 - [ ] MQTT wildcard (`+`/`#`) support in alert rule topic matching
 - [ ] Historical time-series storage (currently only the *latest* value per topic is persisted)
 - [ ] Integration tests against a real Modbus simulator and a real Postgres/MySQL instance
 - [ ] CI workflow (`dotnet build`, `dotnet test`)
 - [ ] Document deployment (systemd/Windows service or container image) for edge gateways
+- [ ] License
 
 ## Contributing
 
@@ -164,4 +182,4 @@ No license has been declared for this project yet. All rights reserved by the au
 
 ---
 
-*Built for the industrial edge — C# port of [CatHub](https://github.com/dhimasarista/cathub).*
+*Built for the industrial edge.*

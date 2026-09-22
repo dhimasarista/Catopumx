@@ -1,7 +1,7 @@
-using Catopumx;
+using Catopumx.Configuration;
 using Xunit;
 
-namespace Catopumx.Tests;
+namespace Catopumx.Tests.Configuration;
 
 public class ConfigTests
 {
@@ -57,7 +57,7 @@ public class ConfigTests
         Assert.Equal(1, config.Modbus[0].SlaveId);
         Assert.Equal(1, config.Modbus[0].Registers[0].Quantity);
         Assert.Single(config.Alerts);
-        Assert.Equal(Catopumx.Operator.GreaterThan, config.Alerts[0].Operator);
+        Assert.Equal(Operator.GreaterThan, config.Alerts[0].Operator);
     }
 
     [Fact]
